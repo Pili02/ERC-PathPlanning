@@ -18,15 +18,15 @@ class RRTAlgorithm():
         self.randomTree = treeNode(start[0], start[1])
         self.goal = treeNode(goal[0], goal[1])
         self.nearestNode = None
-        self.iterations = min(numIterations, 250)
+        self.iterations = numIterations
         self.grid = grid
         self.rho = stepSize
-        self.path_distance = 0
+        self.path_distance = 2
         self.nearestDist = 10000
         self.numWaypoints = 0
         self.Waypoints = []
 
-    def addChild(self, locationX, locationY):
+    def addChild(self,locationX,locationY):
         if (locationX == self.goal.locationX):
             self.nearestNode.children.append(self.goal)
             self.goal.parent = self.nearestNode
@@ -51,20 +51,31 @@ class RRTAlgorithm():
         return point
 
     def isInObstacle(self, locationStart, locationEnd):
-        u_hat = self.unitVector(locationStart, locationEnd)
+        uv = self.unitVector(locationStart, locationEnd)
         testPoint = np.array([0.0, 0.0])
 
         for i in range(self.rho):
-            testPoint[0] = min(grid.shape[1] - 1, locationStart.locationX + i * u_hat[0])
-            testPoint[1] = min(grid.shape[0] - 1, locationStart.locationY + i * u_hat[1])
+            testPoint[0] = min(grid.shape[1] - 1, locationStart.locationX + i * uv[0])
+            testPoint[1] = min(grid.shape[0] - 1, locationStart.locationY + i * uv[1])
+            if self.grid[round(testPoint[1]), round(testPoint[0])] == 1:
+                return True
+        return False
+
+    def isInObstacleg(self, locationStart, locationEnd):
+        uv = self.unitVector(locationStart, locationEnd)
+        testPoint = np.array([0.0, 0.0])
+
+        for i in range(int(self.distance(locationStart,locationEnd))):
+            testPoint[0] = min(grid.shape[1] - 1, locationStart.locationX + i * uv[0])
+            testPoint[1] = min(grid.shape[0] - 1, locationStart.locationY + i * uv[1])
             if self.grid[round(testPoint[1]), round(testPoint[0])] == 1:
                 return True
         return False
 
     def unitVector(self, locationStart, locationEnd):
         v = np.array([locationEnd[0] - locationStart.locationX, locationEnd[1] - locationStart.locationY])
-        u_hat = v / np.linalg.norm(v)
-        return u_hat
+        uv = v / np.linalg.norm(v)
+        return uv
 
     def findNearest(self, root, point):
         if not root:
@@ -89,6 +100,13 @@ class RRTAlgorithm():
     def resetNearestValues(self):
         self.nearestDist = 10000
         self.nearestNode = None
+
+
+    def findDirectPath(self,new):
+        if not self.isInObstacleg(self.goal,new):
+            return True
+        return False
+
 
     def retraceRRTPath(self, goal):
 
@@ -133,8 +151,10 @@ for i in range(rrt.iterations):
         rrt.addChild(new[0], new[1])
         plt.pause(0.10)
         plt.plot([rrt.nearestNode.locationX, new[0]], [rrt.nearestNode.locationY, new[1]], 'go', linestyle="--")
-        if (rrt.goalFound(new)):
-            rrt.addChild(goal[0], goal[1])
+        if rrt.findDirectPath(new):
+            rrt.goal.parent=treeNode(new[0],new[1])
+            rrt.goal.parent.children.append(rrt.goal)
+            rrt.goal.parent.parent=rrt.nearestNode
             rrt.retraceRRTPath(rrt.goal)
             print('Goal Found')
             break
